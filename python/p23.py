@@ -1,80 +1,43 @@
 #https://projecteuler.net/problem=23
 #Find the sum of all the positive integers which cannot be written as the sum of two abundant numbers.
-from itertools import product
-from collections import Counter
-from operator import mul
-from functools import reduce
+from bisect import bisect
+from itertools import islice
+def all_sum_divisors(n):
+    """Return a list of the sums of divisors for the numbers below n.
 
-def gen_primes():
-    """ Generate an infinite sequence of prime numbers."""
-    # Maps composites to primes witnessing their compositeness.
-    # This is memory efficient, as the sieve is not "run forward"
-    # indefinitely, but only as long as required by the current
-    # number being tested.
-    #
-    D = {}
-    
-    # The running integer that's checked for primeness
-    q = 2
-    
-    while True:
-        if q not in D:
-            # q is a new prime.
-            # Yield it and mark its first multiple that isn't
-            # already marked in previous iterations
-            # 
-            yield q
-            D[q * q] = [q]
-        else:
-            # q is composite. D[q] is the list of primes that
-            # divide it. Since we've reached q, we no longer
-            # need it in the map, but we'll mark the next 
-            # multiples of its witnesses to prepare for larger
-            # numbers
-            # 
-            for p in D[q]:
-                D.setdefault(p + q, []).append(p)
-            del D[q]
-        
-        q += 1
-			
-def prime_factors(num):
-   """Get prime divisors with multiplicity"""
+    >>> all_sum_divisors(10) # https://oeis.org/A000203
+    [1, 1, 3, 4, 7, 6, 12, 8, 15, 13]
 
-   pf = Counter()
-   primes = gen_primes()
-   while num > 1:
-      p = next(primes)
-      m = 0
-      while m == 0:
-         d,m = divmod(num,p)
-         if m == 0:
-            pf[p] += 1
-            num = d
-   return pf
-
-def prod(l):
-   return reduce(mul, l, 1)
-
-def powered(factors, powers):
-   return prod(f**p for (f,p) in zip(factors, powers))
-
-
-def divisors(num):
-   pf = prime_factors(num)
-   primes = pf.keys()
-   #For each prime, possible exponents
-   exponents = [range(i+1) for i in pf.values()]
-   return sorted([powered(primes,es) for es in product(*exponents)])
-   
-def proper_divisors(num):
-	return divisors(num)[:-1]
-
-def is_abundant(num):
-	return False
+    """
+    result = [1] * n
+    for p in range(2, n):
+        if result[p] == 1: # p is prime
+            p_power, last_m = p, 1
+            while p_power < n:
+                m = last_m + p_power
+                for i in range(p_power, n, p_power):
+                    result[i] //= last_m
+                    result[i] *= m
+                last_m = m
+                p_power *= p
+    return result
+	
+def solve_euler23(n=28124):
+    """Return the sum of all positive integers below n which cannot be
+    written as the sum of two abundant numbers.
+    """
+    sum_divisors = all_sum_divisors(n)
+    abundant = [i for i in range(1, n) if sum_divisors[i] > 2 * i]
+    abundant_set = set(abundant)
+    def unsums():
+        for i in range(1, n):
+            for j in islice(abundant, bisect(abundant, i // 2)):
+                if i - j in abundant_set:
+                    break
+            else:
+                yield i
+    return sum(unsums())
    
 if __name__ == "__main__":
-	#TODO
-	n = 28
-	print(divisors(n))
+	print(solve_euler23())
 	
